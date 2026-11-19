@@ -1,0 +1,56 @@
+id,name,tier,category,last_rate,q05,q25,median,q75,q95,truth_demo
+1,Vice Got a Price!,platinum,platinum,0.0,0.0018,0.0063,0.015,0.036,0.1263,0.01
+2,Just Like Paradise,bronze,opening,94.47,82.475,90.123,93.5266,95.8118,97.7951,88.0
+3,Paradise Lost,bronze,story_ch1,34.69,26.0887,40.6309,52.0076,63.1799,76.8891,38.0
+4,T**s Ass Drug Money,bronze,story_ch2,19.43,13.6693,23.4891,32.711,43.4951,59.8798,24.0
+5,"Vice City, Baby!",bronze,story_ch3,11.15,8.1221,14.6324,21.3474,30.0588,45.4536,17.0
+6,"Top Of The World, Ma",bronze,story_ch4,6.41,4.9735,9.2129,13.844,20.2829,33.0356,12.0
+7,You Gotta Know When to Get Off,gold,story_final,2.4,1.9662,3.7431,5.8002,8.8837,15.8984,6.0
+8,Trust,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+9,Break the Bank,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+10,Family Matters,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+11,DWNFALL,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+12,Hi-Jacked,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+13,Snow Storm,bronze,story_mission,9.17,6.8875,12.5433,18.5073,26.4494,41.0814,15.0
+14,A Long Road,gold,completion100,0.01,0.0052,0.01,0.0158,0.0251,0.0486,0.03
+15,Cunning Stunts,silver,grind,0.05,0.0426,0.083,0.132,0.2098,0.4087,0.15
+16,Master of None,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+17,The Shootist,silver,grind,0.05,0.0426,0.083,0.132,0.2098,0.4087,0.15
+18,Top Fun,bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+19,"Earn Cash, Not Kudos",bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+20,Baited My Tackle,bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+21,Stick Fiddler,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+22,Road to Rehabilitation,bronze,side_final,1.34,0.9786,1.8801,2.9447,4.584,8.5213,3.0
+23,This Was No Boat Accident,bronze,side_final,1.34,0.9786,1.8801,2.9447,4.584,8.5213,3.0
+24,The Lone Rider,bronze,side_final,1.34,0.9786,1.8801,2.9447,4.584,8.5213,3.0
+25,Strangers & Freaks,silver,side_strand,0.73,0.5759,1.1107,1.7474,2.739,5.1776,2.0
+26,Supply & Demand,bronze,side_final,1.34,0.9786,1.8801,2.9447,4.584,8.5213,3.0
+27,Spin On This!,bronze,side_final,1.34,0.9786,1.8801,2.9447,4.584,8.5213,3.0
+28,Positive Mental Attitude,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
+29,Fair Game,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
+30,Don't Touch My Deck,silver,grind,0.05,0.0426,0.083,0.132,0.2098,0.4087,0.15
+31,You WAiNKer!,silver,grind,0.05,0.0426,0.083,0.132,0.2098,0.4087,0.15
+32,One Last Thing,bronze,grind,0.05,0.0426,0.083,0.132,0.2098,0.4087,0.15
+33,Hot Together,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+34,Retail Therapy,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+35,Whip It Good,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
+36,Gunslinger,bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+37,Catch Me If You Can,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+38,Challenging Tank,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+39,Sneakthief,bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+40,Maximum Withdrawal,silver,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+41,A Classic Blitz Play,bronze,skill,0.67,0.4723,0.9118,1.4362,2.2552,4.2821,1.5
+42,The Goodtime State,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
+43,Pest Control,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+44,In The Beginning…,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+45,Capital Offense,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+46,Let’s Go Bowling,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+47,Personal Best,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+48,Actions Speak Louder,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+49,"Bad Luck, I Guess",bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+50,The Truth Is Out There,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+51,Ten Pin,bronze,secret_misc,2.57,1.7045,3.2528,5.0547,7.7746,14.049,4.5
+52,Dime on the Dollar,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+53,Treat Yo Self,bronze,misc_easy,6.8,4.1935,7.8228,11.8464,17.5456,29.208,9.0
+54,Little Boxes,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
+55,On the Spot,bronze,collect,0.72,0.5379,1.0377,1.6332,2.5617,4.8502,1.8
