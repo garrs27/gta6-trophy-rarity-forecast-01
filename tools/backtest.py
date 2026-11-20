@@ -35,6 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import main as model  # noqa: E402
 from main import forecast_case, classify  # noqa: E402
 
 LEVELS = [0.05, 0.25, 0.5, 0.75, 0.95]
@@ -302,9 +303,70 @@ def run_final():
                   f"{typical_miss(fc, ans):>9.2f}{coverage90(fc, ans):>7.2f}")
 
 
+def calibration_analysis():
+    """Reproducible practice LOO category bias and sigma grid diagnostics."""
+    kit = ROOT.parent / "kit" / "gta6-trophy-rarity-forecast-01-kit" / "input"
+    rng = random.Random(7)
+    practices = []
+    for name in ("p00", "p01"):
+        case = json.loads((kit / f"{name}.in").read_text())
+        practices.append((name, case, practice_answer(case, rng)))
+    print("\nLOO LOGIT BIAS (train practice case -> held-out case)")
+    category_errors = {}
+    for train_idx, test_idx in ((0, 1), (1, 0)):
+        train_name, train_case, train_ans = practices[train_idx]
+        test_name, test_case, test_ans = practices[test_idx]
+        train_fc = forecast_case(train_case, train_name)
+        test_fc = forecast_case(test_case, test_name)
+        train_by_cat = {}
+        for row, tr in zip(train_fc["trophies"], train_case["trophies"]):
+            cat = "opening" if row["q"][2] > 95 else classify(tr)
+            train_by_cat.setdefault(cat, []).append(logit(train_ans[row["id"]]) - logit(row["q"][2]))
+        biases = {cat: sorted(errs)[len(errs)//2] for cat, errs in train_by_cat.items()}
+        residuals = []
+        test_by_cat = {}
+        for row, tr in zip(test_fc["trophies"], test_case["trophies"]):
+            cat = "opening" if row["q"][2] > 95 else classify(tr)
+            error = logit(test_ans[row["id"]]) - logit(row["q"][2])
+            residuals.append(error - biases.get(cat, 0.0))
+            test_by_cat.setdefault(cat, []).append(error)
+            category_errors.setdefault(cat, []).append(error)
+        print(f"{train_name} -> {test_name}: global train median={sorted([logit(train_ans[r['id']])-logit(r['q'][2]) for r in train_fc['trophies']])[27]:.4f}, heldout corrected mean={sum(residuals)/len(residuals):.4f}")
+        for cat in sorted(set(train_by_cat) | set(test_by_cat)):
+            held = test_by_cat.get(cat, [])
+            if held:
+                print(f"  {cat}: train bias={biases.get(cat, 0.0):+.4f}, heldout mean={sum(held)/len(held):+.4f}")
+    print("  BIAS_BY_CATEGORY left at zeros unless both directions agree in sign.")
+
+    datasets = [(name, case, ans) for name, case, ans in practices]
+    for scn in SCENARIOS:
+        case, ans = simulate(scn, json.loads((kit / "p00.in").read_text())["trophies"], opening_ids_from_kit())
+        datasets.append((scn, case, ans))
+    print("\nSIGMA_SCALE GRID (practice + synthetic)")
+    best = None
+    for scale in (0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10):
+        model.SIGMA_SCALE = scale
+        losses, practice_cov, synthetic_cov = [], [], []
+        for name, case, ans in datasets:
+            fc = forecast_case(case, name)
+            losses.append(pinball_loss(fc, ans))
+            cov = coverage90(fc, ans)
+            (practice_cov if name in ("p00", "p01") else synthetic_cov).append(cov)
+        mean_loss = sum(losses) / len(losses)
+        pcov = sum(practice_cov) / len(practice_cov)
+        scov = sum(synthetic_cov) / len(synthetic_cov)
+        print(f"{scale:.2f}: mean pinball={mean_loss:.4f}, practice mean cov90={pcov:.3f}, synthetic mean cov90={scov:.3f}")
+        if pcov >= 0.90 and scov >= 0.92 and (best is None or mean_loss < best[0]):
+            best = (mean_loss, scale)
+    model.SIGMA_SCALE = best[1] if best else 1.0
+    print(f"selected SIGMA_SCALE={model.SIGMA_SCALE:.2f}")
+
+
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
     if which in ("all", "practice"):
         run_practice()
     if which in ("all", "final"):
         run_final()
+    if which in ("all", "calibration"):
+        calibration_analysis()

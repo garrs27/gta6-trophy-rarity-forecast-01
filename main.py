@@ -124,6 +124,21 @@ SIGMA_PER_LOG_HOUR = 0.20
 SIGMA_FLAT_HISTORY = 1.10
 SIGMA_FLOOR = 0.60
 SIGMA_CAP = 2.00
+TAU = 12.0
+K_POOL = 2.0
+SHRINK = 0.90
+K_DRIFT = 0.0
+SIGMA_SCALE = 0.95
+# Practice LOO estimates agree in sign by category; each stored average is
+# clipped to the required +/-0.15 logit range.
+BIAS_BY_CATEGORY = {
+    "opening": 0.15, "completion100": 0.0, "platinum": 0.15,
+    "collect": -0.15, "grind": -0.15, "misc_easy": -0.15,
+    "secret_misc": -0.15, "side_final": -0.15, "side_strand": -0.15,
+    "skill": -0.15, "story_ch1": -0.15, "story_ch2": -0.15,
+    "story_ch3": -0.15, "story_ch4": -0.15, "story_final": -0.15,
+    "story_mission": -0.15,
+}
 
 # One read per 30 minutes is enough for the trend fit; denser reads are
 # autocorrelated copies of the same Exophase refresh.
@@ -221,27 +236,33 @@ def thin_history_reads(reads, release):
     return out
 
 
-def ols(xs, ys):
+def winsor(x):
+    return max(-2.0, min(2.0, x))
+
+
+def ols(xs, ys, weights=None):
     """Least squares y = a + b*x; returns (a, b, residual_sd, n)."""
     n = len(xs)
     if n == 0:
         return 0.0, 0.0, 0.0, 0
     if n == 1:
         return ys[0], 0.0, 0.0, 1
-    mx = sum(xs) / n
-    my = sum(ys) / n
-    sxx = sum((x - mx) ** 2 for x in xs)
+    weights = weights or [1.0] * n
+    sw = sum(weights)
+    mx = sum(w * x for w, x in zip(weights, xs)) / sw
+    my = sum(w * y for w, y in zip(weights, ys)) / sw
+    sxx = sum(w * (x - mx) ** 2 for w, x in zip(weights, xs))
     if sxx <= 1e-12:
         return my, 0.0, 0.0, n
-    sxy = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    sxy = sum(w * (x - mx) * (y - my) for w, x, y in zip(weights, xs, ys))
     b = sxy / sxx
     a = my - b * mx
-    resid = math.sqrt(sum((y - (a + b * x)) ** 2 for x, y in zip(xs, ys)) / n)
+    resid = math.sqrt(sum(w * winsor(y - (a + b * x)) ** 2 for w, x, y in zip(weights, xs, ys)) / sw)
     return a, b, resid, n
 
 
-def forecast_trophy_from_history(trophy, series, release, target_hours, horizon_hours, cat=None):
-    """series: list of (hours_since_release, rate_pct) for this trophy."""
+def forecast_trophy_from_history(trophy, series, release, target_hours, horizon_hours, cat=None, pooled_delta=None):
+    """series: list of (hours_since_release, rate_pct[, players_tracked])."""
     if cat is None:
         cat = classify_trophy(trophy)
     prior_med, prior_beta = PRIORS[cat]
@@ -272,29 +293,32 @@ def forecast_trophy_from_history(trophy, series, release, target_hours, horizon_
     # recency-weighted (later reads count double), over the last 24 hours
     # of reads where the case has them, else all reads.
     last_t = series[-1][0]
-    recent = [(h, r) for h, r in series if h >= last_t - 24.0] or series
-    num = den = 0.0
-    for h, r in recent:
-        w = 1.0 + (h - recent[0][0]) / max(1.0, recent[-1][0] - recent[0][0])
-        num += w * (logit(r) - prior_logit_at(h))
-        den += w
-    delta = num / den if den else 0.0
+    recent = [item for item in series if item[0] >= last_t - 24.0] or series
+    residuals = [winsor(logit(item[1]) - prior_logit_at(item[0])) for item in recent]
+    weights = [math.exp(-(last_t - item[0]) / TAU) for item in recent]
+    sw = sum(weights)
+    raw_delta = sum(w * y for w, y in zip(weights, residuals)) / sw if sw else 0.0
+    delta = pooled_delta if pooled_delta is not None else raw_delta
 
     # Recent-slope correction: OLS slope over the last 24h of reads, minus
     # the prior slope, applied over the extrapolation distance and damped.
-    xs = [math.log1p(h) for h, _ in recent]
-    ys = [logit(r) for _, r in recent]
-    _a, beta_recent, resid, n_recent = ols(xs, ys)
-    distinct = len({round(r, 2) for _, r in series})
+    xs = [math.log1p(item[0]) for item in recent]
+    ys = residuals
+    _a, beta_recent, resid, n_recent = ols(xs, ys, weights)
+    distinct = len({round(item[1], 2) for item in series})
     dlog = max(0.0, x_target - math.log1p(last_t))
     slope_adj = 0.0
     if n_recent >= 5 and distinct > 1:
-        slope_adj = max(-0.6, min(0.6, (beta_recent - prior_beta) * dlog * 0.35))
+        slope_adj = max(-0.6, min(0.6, beta_recent * dlog * 0.35))
 
     # The level correction persists only partly: the further the target,
     # the more the forecast reverts to the prior curve.
     persistence = 0.75 if distinct > 1 else 0.50
-    med_logit = prior_logit_at(target_hours) + persistence * delta + slope_adj
+    med_logit = prior_logit_at(target_hours) + SHRINK * (persistence * delta + slope_adj) + BIAS_BY_CATEGORY.get(cat, 0.0)
+    populations = [(item[0], item[2]) for item in recent if len(item) > 2 and item[2] > 0]
+    if K_DRIFT and len(populations) >= 2:
+        growth = (math.log(populations[-1][1]) - math.log(populations[0][1])) / max(1e-9, math.log1p(populations[-1][0]) - math.log1p(populations[0][0]))
+        med_logit += max(-0.25, min(0.25, -K_DRIFT * growth * dlog * (1.0 - last_rate / 100.0)))
 
     # Short-horizon ceiling. In the first hours after launch a trophy's
     # rate cannot climb far in a few hours -- earning takes playtime --
@@ -312,7 +336,7 @@ def forecast_trophy_from_history(trophy, series, release, target_hours, horizon_
 
     # Spread: base + extrapolation distance + flat-history refresh risk
     # + trend-fit residual.
-    sigma = math.sqrt(
+    sigma = SIGMA_SCALE * math.sqrt(
         SIGMA_BASE ** 2
         + (SIGMA_PER_LOG_HOUR * dlog) ** 2
         + (SIGMA_FLAT_HISTORY if distinct <= 1 else 0.0) ** 2
@@ -343,6 +367,7 @@ def forecast_case(case, name):
     thinned = thin_history_reads(history, release)
     # Per-trophy series: (hours since release, rate), skipping nulls.
     rows = []
+    pending = []
     for i, trophy in enumerate(trophies):
         series = []
         for r in thinned:
@@ -350,7 +375,7 @@ def forecast_case(case, name):
             if rate is None:
                 continue
             h = (parse_timestamp(r["at"]) - release).total_seconds() / 3600.0
-            series.append((h, float(rate)))
+            series.append((h, float(rate), int(r.get("players_tracked", 0) or 0)))
         if not series:
             # No read ever listed this trophy: fall back to the prior alone.
             cat = classify_trophy(trophy)
@@ -363,7 +388,25 @@ def forecast_case(case, name):
         # mission, whatever its description says: its earliest read is
         # ~100%, and it stays near the top of the list all week.
         cat = "opening" if series[0][1] >= 95.0 else classify_trophy(trophy)
-        qs, _cat = forecast_trophy_from_history(trophy, series, release, target_hours, horizon_hours, cat)
+        pending.append((trophy, series, cat))
+    # Pool raw log-ratio level corrections within progression categories.
+    deltas = []
+    for trophy, series, cat in pending:
+        prior_med, prior_beta = PRIORS[cat]
+        anchor = math.log1p(PRIOR_ANCHOR_HOURS)
+        last_t = series[-1][0]
+        recent = [item for item in series if item[0] >= last_t - 24.0] or series
+        weights = [math.exp(-(last_t - item[0]) / TAU) for item in recent]
+        residuals = [winsor(logit(item[1]) - (logit(prior_med) + prior_beta * (math.log1p(item[0]) - anchor))) for item in recent]
+        delta_i = sum(w * r for w, r in zip(weights, residuals)) / sum(weights)
+        deltas.append((trophy, series, cat, delta_i, len(recent)))
+    category_means = {}
+    for _, _, cat, delta_i, _ in deltas:
+        category_means.setdefault(cat, []).append(delta_i)
+    category_means = {cat: sum(values) / len(values) for cat, values in category_means.items()}
+    for trophy, series, cat, delta_i, n_i in deltas:
+        blended = (n_i * delta_i + K_POOL * category_means[cat]) / (n_i + K_POOL)
+        qs, _cat = forecast_trophy_from_history(trophy, series, release, target_hours, horizon_hours, cat, blended)
         rows.append({"id": trophy["id"], "q": qs})
     return {"trophies": rows}
 
